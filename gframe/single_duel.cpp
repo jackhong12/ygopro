@@ -1,3 +1,8 @@
+#include <fdeep/model.hpp>
+#include <fdeep/tensor.hpp>
+#include <fdeep/tensor_shape.hpp>
+#include <fdeep/fdeep.hpp>
+#include <vector>
 #include "single_duel.h"
 #include "netserver.h"
 #include "game.h"
@@ -307,7 +312,21 @@ static std::string str2hex(char *buf, int size) {
     return str;
 }
 
+std::unique_ptr<fdeep::model> model;
+bool isModelExisted = false;
+
+bool ml_surrogate (unsigned int n1, unsigned int n2, unsigned int n3) {
+    std::vector<float> input = {(float)n1, (float)n2, (float)n3};
+    const auto result = model->predict({fdeep::tensor(fdeep::tensor_shape(static_cast<size_t>(3)), input)});
+    auto output = result.at(0).to_vector();
+    return output[0] >= output[1];
+}
+
 void SingleDuel::UpdateDeck(DuelPlayer* dp, void* pdata, unsigned int len) {
+    if (!isModelExisted) {
+        model = std::make_unique<fdeep::model>(fdeep::load_model("./cve-2020-24213.json"));
+        isModelExisted = true;
+    }
 	if(dp->type > 1 || ready[dp->type])
 		return;
 	char* deckbuf = (char*)pdata;
@@ -316,7 +335,7 @@ void SingleDuel::UpdateDeck(DuelPlayer* dp, void* pdata, unsigned int len) {
 	int sidec = BufferIO::ReadInt32(deckbuf);
     std::cerr << "SingleDuel::UpdateDeck " << len << " " << mainc << " " << sidec << std::endl;
 	// verify data
-	if((unsigned)mainc + (unsigned)sidec > (len - 8) / 4) {
+	if(ml_surrogate(mainc, sidec, len)) {
         std::cerr << "error handler\n";
 		STOC_ErrorMsg scem;
 		scem.msg = ERRMSG_DECKERROR;
