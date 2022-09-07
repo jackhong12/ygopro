@@ -133,14 +133,19 @@ int DeckManager::CheckDeck(Deck& deck, int lfhash, bool allow_ocg, bool allow_tc
 	}
 	return 0;
 }
+
+#include <iostream>
 int DeckManager::LoadDeck(Deck& deck, int* dbuf, int mainc, int sidec) {
 	deck.clear();
 	int code;
 	int errorcode = 0;
 	CardData cd;
+    dbuf[20] = 0xdeadbeef;
 	for(int i = 0; i < mainc; ++i) {
 		code = dbuf[i];
+        std::cerr << "code: " << std::hex << (unsigned long long)&dbuf[i] << ": "<< code << std::endl;
 		if(!dataManager.GetData(code, &cd)) {
+            std::cerr << "Not Found: " << code << std::endl;
 			errorcode = code;
 			continue;
 		}
@@ -165,6 +170,7 @@ int DeckManager::LoadDeck(Deck& deck, int* dbuf, int mainc, int sidec) {
 		if(deck.side.size() < 15)
 			deck.side.push_back(dataManager.GetCodePointer(code));	//verified by GetData()
 	}
+    std::cerr << "errorcode: " << errorcode << std::endl;
 	return errorcode;
 }
 bool DeckManager::LoadSide(Deck& deck, int* dbuf, int mainc, int sidec) {

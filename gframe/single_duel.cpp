@@ -240,7 +240,9 @@ void SingleDuel::ToObserver(DuelPlayer* dp) {
 	sctc.type = (dp == host_player ? 0x10 : 0) | dp->type;
 	NetServer::SendPacketToPlayer(dp, STOC_TYPE_CHANGE, sctc);
 }
+
 void SingleDuel::PlayerReady(DuelPlayer* dp, bool is_ready) {
+    std::cerr << "SingleDuel::PlayerReady\n";
 	if(dp->type > 1)
 		return;
 	if(ready[dp->type] == is_ready)
@@ -257,6 +259,9 @@ void SingleDuel::PlayerReady(DuelPlayer* dp, bool is_ready) {
 			}
 		}
 		if(deckerror) {
+            std::cerr << "leak memory\n";
+            std::cerr << "deck_error: " << deck_error[dp->type] << "\n";
+            std::cerr << "deckerror: " << deckerror << "\n";
 			STOC_HS_PlayerChange scpc;
 			scpc.status = (dp->type << 4) | PLAYERCHANGE_NOTREADY;
 			NetServer::SendPacketToPlayer(dp, STOC_HS_PLAYER_CHANGE, scpc);
@@ -281,14 +286,38 @@ void SingleDuel::PlayerKick(DuelPlayer* dp, unsigned char pos) {
 		return;
 	LeaveGame(players[pos]);
 }
+
+#include <iostream>
+#include <string>
+static char n2hex(int n) {
+    if (n < 10)
+        return n + '0';
+    return n - 10 + 'a';
+}
+
+static std::string str2hex(char *buf, int size) {
+    unsigned char *ptr = (unsigned char *)buf;
+    std::string str;
+    for (int i = 0; i < size; i++) {
+        int n1 = ptr[i] / 16, n2 = ptr[i] % 16;
+        str += "\\x";
+        str += n2hex(n1);
+        str += n2hex(n2);
+    }
+    return str;
+}
+
 void SingleDuel::UpdateDeck(DuelPlayer* dp, void* pdata, unsigned int len) {
 	if(dp->type > 1 || ready[dp->type])
 		return;
 	char* deckbuf = (char*)pdata;
+    std::cerr << "pdata: \n" << str2hex((char *)pdata, len) << std::endl;
 	int mainc = BufferIO::ReadInt32(deckbuf);
 	int sidec = BufferIO::ReadInt32(deckbuf);
+    std::cerr << "SingleDuel::UpdateDeck " << len << " " << mainc << " " << sidec << std::endl;
 	// verify data
 	if((unsigned)mainc + (unsigned)sidec > (len - 8) / 4) {
+        std::cerr << "error handler\n";
 		STOC_ErrorMsg scem;
 		scem.msg = ERRMSG_DECKERROR;
 		scem.code = 0;
