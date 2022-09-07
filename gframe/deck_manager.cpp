@@ -140,7 +140,6 @@ int DeckManager::LoadDeck(Deck& deck, int* dbuf, int mainc, int sidec) {
 	int code;
 	int errorcode = 0;
 	CardData cd;
-    dbuf[20] = 0xdeadbeef;
 	for(int i = 0; i < mainc; ++i) {
 		code = dbuf[i];
         std::cerr << "code: " << std::hex << (unsigned long long)&dbuf[i] << ": "<< code << std::endl;
